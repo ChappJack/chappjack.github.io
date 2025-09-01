@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Gmail Subjects Viewer</title>
+  <script src="https://apis.google.com/js/api.js"></script>
+</head>
+<body>
+  <h1>Gmail Subjects</h1>
+  <button id="authorize-button">Authorize & Load Subjects</button>
+  <ul id="subjects"></ul>
+
+  <script>
+    const CLIENT_ID = "YOUR_CLIENT_ID_HERE";
+    const API_KEY = ""; // not strictly required for this
+    const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest"];
+    const SCOPES = "https://www.googleapis.com/auth/gmail.readonly";
+
+    function start() {
+      gapi.client.init({
+        apiKey: API_KEY,
+        clientId: CLIENT_ID,
+        discoveryDocs: DISCOVERY_DOCS,
+        scope: SCOPES,
+      }).then(() => {
+        document.getElementById("authorize-button").onclick = handleAuthClick;
+      });
+    }
+
+    function handleAuthClick() {
+      gapi.auth2.getAuthInstance().signIn().then(loadSubjects);
+    }
+
+    function loadSubjects() {
+      gapi.client.gmail.users.messages.list({
+        userId: "me",
+        maxResults: 20 // adjust how many emails you want
+      }).then(response => {
+        let messages = response.result.messages;
+        if (!messages) {
+          alert("No emails found.");
+          return;
+        }
+        messages.forEach(msg => {
+          gapi.client.gmail.users.messages.get({
+            userId: "me",
+            id: msg.id
+          }).then(res => {
+            let headers = res.result.payload.headers;
+            let subjectHeader = headers.find(h => h.name === "Subject");
+            let subject = subjectHeader ? subjectHeader.value : "(no subject)";
+            let li = document.createElement("li");
+            li.textContent = subject;
+            document.getElementById("subjects").appendChild(li);
+          });
+        });
+      });
+    }
+
+    gapi.load("client:auth2", start);
+  </script>
+</body>
+</html>
